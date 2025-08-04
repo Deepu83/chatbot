@@ -507,12 +507,191 @@
 //     console.log(`🚀 Server running on http://localhost:${PORT}`);
 //   });
 // })();
+
+
+// require('dotenv').config();
+// const express = require('express');
+// const cors = require('cors');
+// const axios = require('axios');
+// const puppeteer = require('puppeteer');
+// const Fuse = require('fuse.js'); // ✅ Fuse.js added
+// const smartReplies = require('./faq'); // Your FAQ { question: answer }
+
+// const app = express();
+// app.use(cors());
+// app.use(express.json());
+
+// const PORT = process.env.PORT || 3000;
+// const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBpY3BeJnYj1Hb63GsaB1ITcTItG74sZuA`;
+
+// // Global variable to hold scraped site content
+// let websiteContent = "";
+
+// // Function to scrape website text with Puppeteer
+// async function scrapeWebsite(url) {
+//   try {
+//     const browser = await puppeteer.launch({
+//       headless: true,
+//       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+//     });
+//     const page = await browser.newPage();
+//     await page.goto(url, { waitUntil: 'networkidle2' });
+//     const text = await page.evaluate(() => document.body.innerText);
+//     await browser.close();
+//     return text;
+//   } catch (err) {
+//     console.error('Error scraping website:', err);
+//     return "";
+//   }
+// }
+
+// // 1. Company intro triggers
+// const companyIntroQuestions = [
+//   "tell me about your company", "who are you", "what is your company",
+//   "about your company", "can you describe your company", "what do you do",
+//   "what services do you provide", "your company", "who is this"
+// ];
+
+// const companyIntroAnswer = `Cognoscente Invnted Pvt. Ltd is an ISO 9001:2015 certified tech company specializing in online examination platforms, application development, AI testing, infrastructure, staffing, and IT training. You can learn more on https://invnted.com/.`;
+
+// function isCompanyIntroQuestion(input) {
+//   input = input.toLowerCase().trim();
+//   return companyIntroQuestions.some(q => input.includes(q));
+// }
+
+// // 2. Casual replies
+// const casualReplies = {
+//   "hello": "Hello! 👋 How can I assist you regarding Cognoscente Invnted Pvt. Ltd?",
+//   "hi": "Hi there! 😊 Ask me anything about Cognoscente Invnted Pvt. Ltd.",
+//   "thanks": "You're welcome! 🙌",
+//   "thank you": "You're most welcome! 😊",
+//   "bye": "Goodbye! Have a great day! 👋",
+//   "goodbye": "Take care! 👋 Let me know if you need any help.",
+//   "ok": "Alright! Let me know if you have any questions about Cognoscente.",
+//   "okay": "Sure thing! 😊"
+// };
+
+// function findCasualResponse(input) {
+//   input = input.toLowerCase().trim();
+//   for (const key of Object.keys(casualReplies)) {
+//     if (input.includes(key)) {
+//       return casualReplies[key];
+//     }
+//   }
+//   return null;
+// }
+
+// // 3. Fuse.js-based smart matching
+// const fuse = new Fuse(Object.keys(smartReplies), {
+//   includeScore: true,
+//   threshold: 0.4, // Lower = more strict
+//   ignoreLocation: true,
+// });
+
+// function findBestFAQMatch(input) {
+//   const result = fuse.search(input.trim().toLowerCase());
+//   if (result.length > 0) {
+//     return result[0].item;
+//   }
+//   return null;
+// }
+
+// // Vary response styles
+// function varyAnswer(answer) {
+//   const templates = [
+//     answer,
+//     `Sure! Here's what I know: ${answer}`,
+//     `Regarding that, I can tell you: ${answer}`,
+//     `Glad you asked! ${answer}`,
+//     `Here's some info: ${answer}`,
+//     `${answer} If you want to know more, just ask!`
+//   ];
+//   return templates[Math.floor(Math.random() * templates.length)];
+// }
+
+// // Chatbot route
+// app.post('/api/faq', async (req, res) => {
+//   const userInputRaw = req.body.question;
+//   if (!userInputRaw) {
+//     return res.status(400).json({ answer: "❌ No question received." });
+//   }
+
+//   const userInput = userInputRaw.toLowerCase().trim();
+
+//   // 1. Company intro
+//   if (isCompanyIntroQuestion(userInput)) {
+//     return res.json({ answer: varyAnswer(companyIntroAnswer) });
+//   }
+
+//   // 2. Casual chat
+//   const casualResponse = findCasualResponse(userInput);
+//   if (casualResponse) {
+//     return res.json({ answer: casualResponse });
+//   }
+
+//   // 3. Match FAQ using Fuse
+//   const bestMatch = findBestFAQMatch(userInput);
+//   if (bestMatch) {
+//     const faqAnswer = smartReplies[bestMatch];
+//     return res.json({ answer: varyAnswer(faqAnswer) });
+//   }
+
+//   // 4. Fallback to Gemini with website context
+//   const promptText = `
+// You are a helpful assistant trained ONLY on information about Cognoscente Invnted Pvt. Ltd, based on the website content below:
+
+// ${websiteContent}
+
+// Answer ONLY questions related to this company and its services, projects, clients, and policies.
+// If a question is unrelated or outside this scope, politely respond:
+// "I'm sorry, I can only answer questions related to Cognoscente Invnted Pvt. Ltd. Please ask about the company."
+
+// User question: ${userInputRaw}
+// `;
+
+//   try {
+//     const response = await axios.post(
+//       GEMINI_API_URL,
+//       {
+//         contents: [{ parts: [{ text: promptText.trim() }] }]
+//       },
+//       {
+//         headers: { 'Content-Type': 'application/json' }
+//       }
+//     );
+
+//     const geminiAnswer = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+//     if (geminiAnswer) {
+//       return res.json({ answer: geminiAnswer });
+//     } else {
+//       return res.json({ answer: "🤖 AI did not provide an answer." });
+//     }
+//   } catch (error) {
+//     console.error("Gemini API error:", error.response?.data || error.message);
+//     return res.json({
+//       answer: "I’m not sure. Please try again later.",
+//     });
+//   }
+// });
+
+// // Start server after scraping
+// (async () => {
+//   console.log("🚀 Scraping https://invnted.com/...");
+//   websiteContent = await scrapeWebsite('https://invnted.com/');
+//   console.log("✅ Scraping complete. Starting server...");
+
+//   app.listen(PORT, () => {
+//     console.log(`🚀 Server running on http://localhost:${PORT}`);
+//   });
+// })();
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const puppeteer = require('puppeteer');
-const Fuse = require('fuse.js'); // ✅ Fuse.js added
+const Fuse = require('fuse.js');
 const smartReplies = require('./faq'); // Your FAQ { question: answer }
 
 const app = express();
@@ -521,17 +700,15 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBpY3BeJnYj1Hb63GsaB1ITcTItG74sZuA`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-// Global variable to hold scraped site content
 let websiteContent = "";
 
-// Function to scrape website text with Puppeteer
 async function scrapeWebsite(url) {
   try {
     const browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'networkidle2' });
@@ -544,7 +721,6 @@ async function scrapeWebsite(url) {
   }
 }
 
-// 1. Company intro triggers
 const companyIntroQuestions = [
   "tell me about your company", "who are you", "what is your company",
   "about your company", "can you describe your company", "what do you do",
@@ -558,7 +734,6 @@ function isCompanyIntroQuestion(input) {
   return companyIntroQuestions.some(q => input.includes(q));
 }
 
-// 2. Casual replies
 const casualReplies = {
   "hello": "Hello! 👋 How can I assist you regarding Cognoscente Invnted Pvt. Ltd?",
   "hi": "Hi there! 😊 Ask me anything about Cognoscente Invnted Pvt. Ltd.",
@@ -580,11 +755,10 @@ function findCasualResponse(input) {
   return null;
 }
 
-// 3. Fuse.js-based smart matching
 const fuse = new Fuse(Object.keys(smartReplies), {
   includeScore: true,
-  threshold: 0.4, // Lower = more strict
-  ignoreLocation: true,
+  threshold: 0.4,
+  ignoreLocation: true
 });
 
 function findBestFAQMatch(input) {
@@ -595,7 +769,6 @@ function findBestFAQMatch(input) {
   return null;
 }
 
-// Vary response styles
 function varyAnswer(answer) {
   const templates = [
     answer,
@@ -608,7 +781,6 @@ function varyAnswer(answer) {
   return templates[Math.floor(Math.random() * templates.length)];
 }
 
-// Chatbot route
 app.post('/api/faq', async (req, res) => {
   const userInputRaw = req.body.question;
   if (!userInputRaw) {
@@ -617,25 +789,21 @@ app.post('/api/faq', async (req, res) => {
 
   const userInput = userInputRaw.toLowerCase().trim();
 
-  // 1. Company intro
   if (isCompanyIntroQuestion(userInput)) {
     return res.json({ answer: varyAnswer(companyIntroAnswer) });
   }
 
-  // 2. Casual chat
   const casualResponse = findCasualResponse(userInput);
   if (casualResponse) {
     return res.json({ answer: casualResponse });
   }
 
-  // 3. Match FAQ using Fuse
   const bestMatch = findBestFAQMatch(userInput);
   if (bestMatch) {
     const faqAnswer = smartReplies[bestMatch];
     return res.json({ answer: varyAnswer(faqAnswer) });
   }
 
-  // 4. Fallback to Gemini with website context
   const promptText = `
 You are a helpful assistant trained ONLY on information about Cognoscente Invnted Pvt. Ltd, based on the website content below:
 
@@ -660,27 +828,16 @@ User question: ${userInputRaw}
     );
 
     const geminiAnswer = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (geminiAnswer) {
-      return res.json({ answer: geminiAnswer });
-    } else {
-      return res.json({ answer: "🤖 AI did not provide an answer." });
-    }
+    return res.json({ answer: geminiAnswer || "🤖 AI did not provide an answer." });
   } catch (error) {
     console.error("Gemini API error:", error.response?.data || error.message);
-    return res.json({
-      answer: "I’m not sure. Please try again later.",
-    });
+    return res.json({ answer: "I’m not sure. Please try again later." });
   }
 });
 
-// Start server after scraping
 (async () => {
   console.log("🚀 Scraping https://invnted.com/...");
   websiteContent = await scrapeWebsite('https://invnted.com/');
   console.log("✅ Scraping complete. Starting server...");
-
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-  });
+  app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
 })();
